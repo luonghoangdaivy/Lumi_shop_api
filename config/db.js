@@ -1,23 +1,16 @@
-import pg from "pg";
+import { Sequelize } from "sequelize";
+import "dotenv/config";
 
-const { Pool } = pg;
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    dialect: "postgres",
+    logging: false,
+  },
+);
 
-const pool = new Pool({
-  host: "localhost",
-  user: "postgres",
-  password: "postgres",
-  database: "example_db",
-  port: 5432,
-});
-
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error("❌ Kết nối PostgreSQL thất bại:", err.message);
-    return;
-  }
-
-  console.log("✅ Kết nối PostgreSQL thành công!");
-  release();
-});
-
-export default pool;
+export default sequelize;
