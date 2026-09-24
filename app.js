@@ -6,6 +6,7 @@ import db from "./models/index.js";
 import productRoutes from "./routes/product.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import productVariantRoutes from "./routes/productVariant.routes.js";
+import productImageRoutes from "./routes/productImage.routes.js";
 
 const app = express();
 
@@ -19,6 +20,8 @@ app.use(express.json());
 app.use("/products", productRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/products", productVariantRoutes);
+app.use("/uploads", express.static("uploads"));
+app.use("/products", productImageRoutes);
 
 app.get("/", (req, res) => {
   res.json({

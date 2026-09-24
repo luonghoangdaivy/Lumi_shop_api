@@ -16,7 +16,7 @@ const ProductImage = sequelize.define(
     },
 
     image_url: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(500),
       allowNull: false,
     },
 
@@ -29,7 +29,6 @@ const ProductImage = sequelize.define(
     tableName: "product_images",
     timestamps: true,
     underscored: true,
-    updatedAt: false,
   },
 );
 
