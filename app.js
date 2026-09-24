@@ -5,6 +5,7 @@ import db from "./models/index.js";
 
 import productRoutes from "./routes/product.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
+import productVariantRoutes from "./routes/productVariant.routes.js";
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use("/products", productRoutes);
 app.use("/categories", categoryRoutes);
+app.use("/products", productVariantRoutes);
 
 app.get("/", (req, res) => {
   res.json({

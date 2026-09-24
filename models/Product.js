@@ -16,12 +16,12 @@ const Product = sequelize.define(
     },
 
     name: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(200),
       allowNull: false,
     },
 
     slug: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(200),
       allowNull: false,
       unique: true,
     },
@@ -34,16 +34,6 @@ const Product = sequelize.define(
     price: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
-    },
-
-    old_price: {
-      type: DataTypes.DECIMAL(12, 2),
-      allowNull: true,
-    },
-
-    brand: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
     },
 
     status: {
