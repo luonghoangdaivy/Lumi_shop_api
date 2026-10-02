@@ -77,6 +77,14 @@ export const createProductAdmin = async (req, res) => {
       });
     }
 
+    // Kiểm tra giá tiền
+    if (Number(price) < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Giá sản phẩm không được nhỏ hơn 0",
+      });
+    }
+
     // Tạo sản phẩm
     const product = await Product.create({
       name,

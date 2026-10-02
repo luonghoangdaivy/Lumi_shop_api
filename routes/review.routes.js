@@ -11,20 +11,16 @@ import authMiddleware from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-// =========================
-// Product Reviews
-// =========================
-
-// Lấy danh sách đánh giá của sản phẩm
-router.get("/products/:productId/reviews", getReviewsByProduct);
-
-// Tạo đánh giá
+// Tạo review
 router.post("/products/:productId/reviews", authMiddleware, createReview);
 
-// Cập nhật đánh giá
+// Lấy review của sản phẩm
+router.get("/products/:productId/reviews", getReviewsByProduct);
+
+// Sửa review
 router.put("/reviews/:id", authMiddleware, updateReview);
 
-// Xóa đánh giá
+// Xóa review
 router.delete("/reviews/:id", authMiddleware, deleteReview);
 
 export default router;
