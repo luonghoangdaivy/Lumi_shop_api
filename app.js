@@ -11,6 +11,8 @@ import cartRoutes from "./routes/cart.routes.js";
 import favoriteRoutes from "./routes/favorite.routes.js";
 import reviewRoutes from "./routes/review.routes.js";
 import orderRoutes from "./routes/order.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import adminOrderRoutes from "./routes/adminOrder.routes.js";
 
 const app = express();
 
@@ -25,6 +27,9 @@ app.use("/auth", authRoutes);
 app.use("/cart", cartRoutes);
 app.use("/favorites", favoriteRoutes);
 app.use("/orders", orderRoutes);
+
+app.use("/admin", adminRoutes);
+app.use("/admin/orders", adminOrderRoutes);
 
 app.use("/products", productRoutes);
 app.use("/products", productVariantRoutes);
