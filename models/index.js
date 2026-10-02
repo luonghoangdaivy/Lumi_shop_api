@@ -9,6 +9,8 @@ import ProductImage from "./ProductImage.js";
 import Cart from "./Cart.js";
 import CartItem from "./CartItem.js";
 
+import Favorite from "./Favorite.js";
+
 const db = {};
 
 db.sequelize = sequelize;
@@ -20,10 +22,39 @@ db.ProductVariant = ProductVariant;
 db.ProductImage = ProductImage;
 db.Cart = Cart;
 db.CartItem = CartItem;
+db.Favorite = Favorite;
 
 // =========================
 // Relationships
 // =========================
+
+// =========================
+// User -> Favorite
+// =========================
+
+User.hasMany(Favorite, {
+  foreignKey: "user_id",
+  as: "favorites",
+});
+
+Favorite.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
+// =========================
+// Product -> Favorite
+// =========================
+
+Product.hasMany(Favorite, {
+  foreignKey: "product_id",
+  as: "favorites",
+});
+
+Favorite.belongsTo(Product, {
+  foreignKey: "product_id",
+  as: "product",
+});
 
 // =========================
 // Category -> Product
