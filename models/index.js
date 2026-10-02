@@ -6,6 +6,9 @@ import Product from "./Product.js";
 import ProductVariant from "./ProductVariant.js";
 import ProductImage from "./ProductImage.js";
 
+import Cart from "./Cart.js";
+import CartItem from "./CartItem.js";
+
 const db = {};
 
 db.sequelize = sequelize;
@@ -15,12 +18,17 @@ db.Category = Category;
 db.Product = Product;
 db.ProductVariant = ProductVariant;
 db.ProductImage = ProductImage;
+db.Cart = Cart;
+db.CartItem = CartItem;
 
 // =========================
 // Relationships
 // =========================
 
+// =========================
 // Category -> Product
+// =========================
+
 Category.hasMany(Product, {
   foreignKey: "category_id",
   as: "products",
@@ -31,7 +39,10 @@ Product.belongsTo(Category, {
   as: "category",
 });
 
+// =========================
 // Product -> ProductVariant
+// =========================
+
 Product.hasMany(ProductVariant, {
   foreignKey: "product_id",
   as: "variants",
@@ -42,7 +53,10 @@ ProductVariant.belongsTo(Product, {
   as: "product",
 });
 
+// =========================
 // Product -> ProductImage
+// =========================
+
 Product.hasMany(ProductImage, {
   foreignKey: "product_id",
   as: "images",
@@ -51,6 +65,48 @@ Product.hasMany(ProductImage, {
 ProductImage.belongsTo(Product, {
   foreignKey: "product_id",
   as: "product",
+});
+
+// =========================
+// User -> Cart
+// =========================
+
+User.hasOne(Cart, {
+  foreignKey: "user_id",
+  as: "cart",
+});
+
+Cart.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
+// =========================
+// Cart -> CartItem
+// =========================
+
+Cart.hasMany(CartItem, {
+  foreignKey: "cart_id",
+  as: "items",
+});
+
+CartItem.belongsTo(Cart, {
+  foreignKey: "cart_id",
+  as: "cart",
+});
+
+// =========================
+// ProductVariant -> CartItem
+// =========================
+
+ProductVariant.hasMany(CartItem, {
+  foreignKey: "variant_id",
+  as: "cartItems",
+});
+
+CartItem.belongsTo(ProductVariant, {
+  foreignKey: "variant_id",
+  as: "variant",
 });
 
 export default db;

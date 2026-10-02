@@ -1,4 +1,3 @@
-import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import db from "./models/index.js";
@@ -8,6 +7,7 @@ import categoryRoutes from "./routes/category.routes.js";
 import productVariantRoutes from "./routes/productVariant.routes.js";
 import productImageRoutes from "./routes/productImage.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import cartRoutes from "./routes/cart.routes.js";
 
 const app = express();
 
@@ -18,13 +18,15 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use("/auth", authRoutes);
+
+app.use("/cart", cartRoutes);
+
 app.use("/products", productRoutes);
-app.use("/categories", categoryRoutes);
 app.use("/products", productVariantRoutes);
-app.use("/uploads", express.static("uploads"));
 app.use("/products", productImageRoutes);
 
-app.use("/auth", authRoutes);
+app.use("/categories", categoryRoutes);
 
 app.get("/", (req, res) => {
   res.json({
