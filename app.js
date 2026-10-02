@@ -10,6 +10,7 @@ import authRoutes from "./routes/auth.routes.js";
 import cartRoutes from "./routes/cart.routes.js";
 import favoriteRoutes from "./routes/favorite.routes.js";
 import reviewRoutes from "./routes/review.routes.js";
+import orderRoutes from "./routes/order.routes.js";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/cart", cartRoutes);
 app.use("/favorites", favoriteRoutes);
+app.use("/orders", orderRoutes);
 
 app.use("/products", productRoutes);
 app.use("/products", productVariantRoutes);

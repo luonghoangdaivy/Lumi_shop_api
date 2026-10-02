@@ -12,6 +12,8 @@ import ProductImage from "./ProductImage.js";
 
 import Cart from "./Cart.js";
 import CartItem from "./CartItem.js";
+import Order from "./Order.js";
+import OrderItem from "./OrderItem.js";
 
 import Favorite from "./Favorite.js";
 import Review from "./Review.js";
@@ -36,6 +38,8 @@ db.ProductImage = ProductImage;
 
 db.Cart = Cart;
 db.CartItem = CartItem;
+db.Order = Order;
+db.OrderItem = OrderItem;
 
 db.Favorite = Favorite;
 db.Review = Review;
@@ -182,6 +186,48 @@ Product.hasMany(Review, {
 Review.belongsTo(Product, {
   foreignKey: "product_id",
   as: "product",
+});
+
+// =========================
+// User -> Order
+// =========================
+
+User.hasMany(Order, {
+  foreignKey: "user_id",
+  as: "orders",
+});
+
+Order.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
+// =========================
+// Order -> OrderItem
+// =========================
+
+Order.hasMany(OrderItem, {
+  foreignKey: "order_id",
+  as: "items",
+});
+
+OrderItem.belongsTo(Order, {
+  foreignKey: "order_id",
+  as: "order",
+});
+
+// =========================
+// ProductVariant -> OrderItem
+// =========================
+
+ProductVariant.hasMany(OrderItem, {
+  foreignKey: "variant_id",
+  as: "orderItems",
+});
+
+OrderItem.belongsTo(ProductVariant, {
+  foreignKey: "variant_id",
+  as: "variant",
 });
 
 // =========================
