@@ -1,5 +1,9 @@
 import sequelize from "../config/db.js";
 
+// =========================
+// Import Models
+// =========================
+
 import User from "./User.js";
 import Category from "./Category.js";
 import Product from "./Product.js";
@@ -10,55 +14,39 @@ import Cart from "./Cart.js";
 import CartItem from "./CartItem.js";
 
 import Favorite from "./Favorite.js";
+import Review from "./Review.js";
+
+// =========================
+// Database Object
+// =========================
 
 const db = {};
 
 db.sequelize = sequelize;
+
+// =========================
+// Register Models
+// =========================
 
 db.User = User;
 db.Category = Category;
 db.Product = Product;
 db.ProductVariant = ProductVariant;
 db.ProductImage = ProductImage;
+
 db.Cart = Cart;
 db.CartItem = CartItem;
+
 db.Favorite = Favorite;
+db.Review = Review;
 
 // =========================
 // Relationships
 // =========================
 
-// =========================
-// User -> Favorite
-// =========================
-
-User.hasMany(Favorite, {
-  foreignKey: "user_id",
-  as: "favorites",
-});
-
-Favorite.belongsTo(User, {
-  foreignKey: "user_id",
-  as: "user",
-});
-
-// =========================
-// Product -> Favorite
-// =========================
-
-Product.hasMany(Favorite, {
-  foreignKey: "product_id",
-  as: "favorites",
-});
-
-Favorite.belongsTo(Product, {
-  foreignKey: "product_id",
-  as: "product",
-});
-
-// =========================
+// ---------------------------------
 // Category -> Product
-// =========================
+// ---------------------------------
 
 Category.hasMany(Product, {
   foreignKey: "category_id",
@@ -70,9 +58,9 @@ Product.belongsTo(Category, {
   as: "category",
 });
 
-// =========================
+// ---------------------------------
 // Product -> ProductVariant
-// =========================
+// ---------------------------------
 
 Product.hasMany(ProductVariant, {
   foreignKey: "product_id",
@@ -84,9 +72,9 @@ ProductVariant.belongsTo(Product, {
   as: "product",
 });
 
-// =========================
+// ---------------------------------
 // Product -> ProductImage
-// =========================
+// ---------------------------------
 
 Product.hasMany(ProductImage, {
   foreignKey: "product_id",
@@ -98,9 +86,9 @@ ProductImage.belongsTo(Product, {
   as: "product",
 });
 
-// =========================
+// ---------------------------------
 // User -> Cart
-// =========================
+// ---------------------------------
 
 User.hasOne(Cart, {
   foreignKey: "user_id",
@@ -112,9 +100,9 @@ Cart.belongsTo(User, {
   as: "user",
 });
 
-// =========================
+// ---------------------------------
 // Cart -> CartItem
-// =========================
+// ---------------------------------
 
 Cart.hasMany(CartItem, {
   foreignKey: "cart_id",
@@ -126,9 +114,9 @@ CartItem.belongsTo(Cart, {
   as: "cart",
 });
 
-// =========================
+// ---------------------------------
 // ProductVariant -> CartItem
-// =========================
+// ---------------------------------
 
 ProductVariant.hasMany(CartItem, {
   foreignKey: "variant_id",
@@ -139,5 +127,65 @@ CartItem.belongsTo(ProductVariant, {
   foreignKey: "variant_id",
   as: "variant",
 });
+
+// ---------------------------------
+// User -> Favorite
+// ---------------------------------
+
+User.hasMany(Favorite, {
+  foreignKey: "user_id",
+  as: "favorites",
+});
+
+Favorite.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
+// ---------------------------------
+// Product -> Favorite
+// ---------------------------------
+
+Product.hasMany(Favorite, {
+  foreignKey: "product_id",
+  as: "favorites",
+});
+
+Favorite.belongsTo(Product, {
+  foreignKey: "product_id",
+  as: "product",
+});
+
+// ---------------------------------
+// User -> Review
+// ---------------------------------
+
+User.hasMany(Review, {
+  foreignKey: "user_id",
+  as: "reviews",
+});
+
+Review.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
+// ---------------------------------
+// Product -> Review
+// ---------------------------------
+
+Product.hasMany(Review, {
+  foreignKey: "product_id",
+  as: "reviews",
+});
+
+Review.belongsTo(Product, {
+  foreignKey: "product_id",
+  as: "product",
+});
+
+// =========================
+// Export
+// =========================
 
 export default db;

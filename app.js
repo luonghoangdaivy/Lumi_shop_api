@@ -9,6 +9,7 @@ import productImageRoutes from "./routes/productImage.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import cartRoutes from "./routes/cart.routes.js";
 import favoriteRoutes from "./routes/favorite.routes.js";
+import reviewRoutes from "./routes/review.routes.js";
 
 const app = express();
 
@@ -20,7 +21,6 @@ app.use(express.json());
 
 // Routes
 app.use("/auth", authRoutes);
-
 app.use("/cart", cartRoutes);
 app.use("/favorites", favoriteRoutes);
 
@@ -29,6 +29,8 @@ app.use("/products", productVariantRoutes);
 app.use("/products", productImageRoutes);
 
 app.use("/categories", categoryRoutes);
+
+app.use("/", reviewRoutes);
 
 app.get("/", (req, res) => {
   res.json({
