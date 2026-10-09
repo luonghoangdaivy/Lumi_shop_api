@@ -6,17 +6,17 @@ const User = sequelize.define(
   {
     id: {
       type: DataTypes.INTEGER,
-      autoIncrement: true,
       primaryKey: true,
+      autoIncrement: true,
     },
 
-    username: {
-      type: DataTypes.STRING(100),
+    name: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
 
     email: {
-      type: DataTypes.STRING(150),
+      type: DataTypes.STRING,
       allowNull: false,
       unique: true,
       validate: {
@@ -25,13 +25,24 @@ const User = sequelize.define(
     },
 
     password: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING,
       allowNull: false,
     },
 
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+
+    address: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+
     role: {
-      type: DataTypes.ENUM("CUSTOMER", "ADMIN"),
-      defaultValue: "CUSTOMER",
+      type: DataTypes.ENUM("USER", "ADMIN"),
+      allowNull: false,
+      defaultValue: "USER",
     },
   },
   {

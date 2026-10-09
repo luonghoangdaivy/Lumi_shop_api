@@ -13,6 +13,8 @@ import cartRoutes from "./routes/cart.routes.js";
 import favoriteRoutes from "./routes/favorite.routes.js";
 import reviewRoutes from "./routes/review.routes.js";
 import orderRoutes from "./routes/order.routes.js";
+import locationRoutes from "./routes/location.routes.js";
+import addressRoutes from "./routes/address.routes.js";
 
 // Admin
 import adminRoutes from "./routes/admin.routes.js";
@@ -20,6 +22,7 @@ import adminDashboardRoutes from "./routes/adminDashboard.routes.js";
 import adminOrderRoutes from "./routes/adminOrder.routes.js";
 import adminProductRoutes from "./routes/adminProduct.routes.js";
 import adminCategoryRoutes from "./routes/adminCategory.routes.js";
+import path from "path";
 
 const app = express();
 
@@ -59,6 +62,10 @@ app.use("/", reviewRoutes);
 
 app.use("/orders", orderRoutes);
 
+app.use("/locations", locationRoutes);
+
+app.use("/addresses", addressRoutes);
+
 // ===============================
 // ADMIN
 // ===============================
@@ -72,6 +79,8 @@ app.use("/admin/orders", adminOrderRoutes);
 app.use("/admin/products", adminProductRoutes);
 
 app.use("/admin/categories", adminCategoryRoutes);
+
+app.use("/uploads", express.static(path.resolve("uploads")));
 
 // ===============================
 // ROOT

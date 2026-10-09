@@ -6,7 +6,7 @@ import {
   deleteFavorite,
 } from "../controllers/favorite.controller.js";
 
-import authMiddleware from "../middleware/auth.middleware.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 

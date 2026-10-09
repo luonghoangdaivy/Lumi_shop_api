@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
 
-const authMiddleware = (req, res, next) => {
+export const authMiddleware = (req, res, next) => {
   try {
-    // Lấy Authorization header
     const authHeader = req.headers.authorization;
 
+    // Không có Authorization
     if (!authHeader) {
       return res.status(401).json({
         success: false,
@@ -12,33 +12,70 @@ const authMiddleware = (req, res, next) => {
       });
     }
 
-    // Kiểm tra Bearer token
-    const parts = authHeader.split(" ");
-
-    if (parts.length !== 2 || parts[0] !== "Bearer") {
+    // Không đúng format Bearer
+    if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
         message: "Token không hợp lệ",
       });
     }
 
-    const token = parts[1];
+    // Lấy token
+    const token = authHeader.split(" ")[1];
 
-    // Verify JWT
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Không tìm thấy token",
+      });
+    }
+
+    // Kiểm tra JWT_SECRET
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET chưa được cấu hình");
+
+      return res.status(500).json({
+        success: false,
+        message: "Server chưa cấu hình JWT_SECRET",
+      });
+    }
+
+    // Giải mã và kiểm tra JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    console.log("JWT decoded:", decoded);
 
     // Lưu thông tin user vào request
     req.user = decoded;
 
+    // Cho request chạy tiếp
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
+    console.error("=================================");
+    console.error("AUTH MIDDLEWARE ERROR");
+    console.error("Name:", error.name);
+    console.error("Message:", error.message);
+    console.error("=================================");
+
+    // Token hết hạn
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token đã hết hạn",
+      });
+    }
+
+    // Token sai
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token không hợp lệ",
+      });
+    }
 
     return res.status(401).json({
       success: false,
-      message: "Token không hợp lệ hoặc đã hết hạn",
+      message: "Xác thực thất bại",
     });
   }
 };
-
-export default authMiddleware;

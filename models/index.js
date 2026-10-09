@@ -12,8 +12,11 @@ import ProductImage from "./ProductImage.js";
 
 import Cart from "./Cart.js";
 import CartItem from "./CartItem.js";
+
 import Order from "./Order.js";
 import OrderItem from "./OrderItem.js";
+
+import Address from "./Address.js";
 
 import Favorite from "./Favorite.js";
 import Review from "./Review.js";
@@ -32,14 +35,18 @@ db.sequelize = sequelize;
 
 db.User = User;
 db.Category = Category;
+
 db.Product = Product;
 db.ProductVariant = ProductVariant;
 db.ProductImage = ProductImage;
 
 db.Cart = Cart;
 db.CartItem = CartItem;
+
 db.Order = Order;
 db.OrderItem = OrderItem;
+
+db.Address = Address;
 
 db.Favorite = Favorite;
 db.Review = Review;
@@ -130,6 +137,21 @@ ProductVariant.hasMany(CartItem, {
 CartItem.belongsTo(ProductVariant, {
   foreignKey: "variant_id",
   as: "variant",
+});
+
+// =================================
+// User -> Address
+// =================================
+
+User.hasMany(Address, {
+  foreignKey: "user_id",
+  as: "addresses",
+  onDelete: "CASCADE",
+});
+
+Address.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
 });
 
 // ---------------------------------

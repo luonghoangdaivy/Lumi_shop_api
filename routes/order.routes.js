@@ -5,9 +5,10 @@ import {
   getOrders,
   getOrderById,
   cancelOrder,
+  updateOrderStatus,
 } from "../controllers/order.controller.js";
 
-import authMiddleware from "../middleware/auth.middleware.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
@@ -17,10 +18,13 @@ router.post("/", authMiddleware, createOrder);
 // Danh sách đơn hàng
 router.get("/", authMiddleware, getOrders);
 
-// Chi tiết đơn hàng
-router.get("/:id", authMiddleware, getOrderById);
+// Cập nhật trạng thái đơn hàng
+router.put("/:id/status", authMiddleware, updateOrderStatus);
 
 // Hủy đơn hàng
 router.put("/:id/cancel", authMiddleware, cancelOrder);
+
+// Chi tiết đơn hàng
+router.get("/:id", authMiddleware, getOrderById);
 
 export default router;

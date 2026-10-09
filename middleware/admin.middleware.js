@@ -1,4 +1,4 @@
-import authMiddleware from "./auth.middleware.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const adminMiddleware = (req, res, next) => {
   // Kiểm tra đăng nhập trước

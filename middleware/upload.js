@@ -1,55 +1,47 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
 
-// Tạo thư mục upload nếu chưa tồn tại
-const uploadDir = "uploads/products";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, {
-    recursive: true,
-  });
-}
+// Đường dẫn tuyệt đối đến Lumi_shop_api/uploads/products
+const uploadDir = path.resolve(__dirname, "../uploads/products");
 
-// Cấu hình nơi lưu file
+fs.mkdirSync(uploadDir, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
 
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const uniqueName = `product-${Date.now()}-${Math.round(
+      Math.random() * 1e9,
+    )}${ext}`;
 
-    const fileName = `product-${Date.now()}${ext}`;
-
-    cb(null, fileName);
+    cb(null, uniqueName);
   },
 });
 
-// Kiểm tra loại file
+const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|webp/;
-
-  const ext = path.extname(file.originalname).toLowerCase();
-
-  const mimeType = allowedTypes.test(file.mimetype);
-
-  const extension = allowedTypes.test(ext);
-
-  if (mimeType && extension) {
-    cb(null, true);
-  } else {
-    cb(new Error("Chỉ chấp nhận file JPG, JPEG, PNG hoặc WEBP"));
+  if (allowedTypes.includes(file.mimetype)) {
+    return cb(null, true);
   }
+
+  cb(new Error("Chỉ chấp nhận file JPG, JPEG, PNG hoặc WEBP."));
 };
 
-// Khởi tạo multer
 const upload = multer({
   storage,
   fileFilter,
-
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
+    fileSize: 5 * 1024 * 1024,
+    files: 10,
   },
 });
 

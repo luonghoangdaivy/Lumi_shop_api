@@ -436,3 +436,117 @@ export const cancelOrder = async (req, res) => {
     });
   }
 };
+
+/* =========================
+   UPDATE ORDER STATUS - ADMIN
+========================= */
+
+export const updateOrderStatus = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowedTransitions = {
+      PENDING: ["CONFIRMED", "CANCELLED"],
+      CONFIRMED: ["SHIPPING", "CANCELLED"],
+      SHIPPING: ["DELIVERED"],
+      DELIVERED: [],
+      CANCELLED: [],
+    };
+
+    const allowedStatuses = [
+      "PENDING",
+      "CONFIRMED",
+      "SHIPPING",
+      "DELIVERED",
+      "CANCELLED",
+    ];
+
+    // 1. Kiểm tra dữ liệu
+    if (!allowedStatuses.includes(status)) {
+      await transaction.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message: "Trạng thái đơn hàng không hợp lệ",
+      });
+    }
+
+    // 2. Tìm đơn hàng và các sản phẩm trong đơn
+    const order = await Order.findByPk(id, {
+      include: [
+        {
+          model: OrderItem,
+          as: "items",
+        },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!order) {
+      await transaction.rollback();
+
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng",
+      });
+    }
+
+    // 3. Kiểm tra quy trình chuyển trạng thái
+    if (!allowedTransitions[order.status]?.includes(status)) {
+      await transaction.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message: `Không thể chuyển đơn hàng từ ${order.status} sang ${status}`,
+      });
+    }
+
+    // 4. Nếu hủy đơn, hoàn lại số lượng hàng vào kho
+    if (status === "CANCELLED") {
+      for (const item of order.items) {
+        const variant = await ProductVariant.findByPk(item.variant_id, {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (variant) {
+          variant.stock += item.quantity;
+
+          await variant.save({ transaction });
+        }
+      }
+    }
+
+    // 5. Cập nhật trạng thái
+    order.status = status;
+
+    await order.save({ transaction });
+
+    // 6. Lưu thay đổi
+    await transaction.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật trạng thái đơn hàng thành công",
+      data: {
+        order_id: order.id,
+        status: order.status,
+      },
+    });
+  } catch (error) {
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
+
+    console.error("Update order status error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Không thể cập nhật trạng thái đơn hàng",
+    });
+  }
+};

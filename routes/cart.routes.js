@@ -7,20 +7,36 @@ import {
   deleteCartItem,
 } from "../controllers/cart.controller.js";
 
-import authMiddleware from "../middleware/auth.middleware.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-// Lấy giỏ hàng
+// ======================================
+// LẤY GIỎ HÀNG
+// GET /cart
+// ======================================
+
 router.get("/", authMiddleware, getCart);
 
-// Thêm sản phẩm
+// ======================================
+// THÊM SẢN PHẨM VÀO GIỎ
+// POST /cart/items
+// ======================================
+
 router.post("/items", authMiddleware, addCartItem);
 
-// Cập nhật số lượng
+// ======================================
+// CẬP NHẬT SỐ LƯỢNG
+// PUT /cart/items/:id
+// ======================================
+
 router.put("/items/:id", authMiddleware, updateCartItem);
 
-// Xóa sản phẩm
+// ======================================
+// XÓA SẢN PHẨM
+// DELETE /cart/items/:id
+// ======================================
+
 router.delete("/items/:id", authMiddleware, deleteCartItem);
 
 export default router;
