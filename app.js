@@ -15,6 +15,7 @@ import reviewRoutes from "./routes/review.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import locationRoutes from "./routes/location.routes.js";
 import addressRoutes from "./routes/address.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 // Admin
 import adminRoutes from "./routes/admin.routes.js";
@@ -65,6 +66,8 @@ app.use("/orders", orderRoutes);
 app.use("/locations", locationRoutes);
 
 app.use("/addresses", addressRoutes);
+
+app.use("/users", userRoutes);
 
 // ===============================
 // ADMIN

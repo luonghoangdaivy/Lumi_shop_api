@@ -15,6 +15,11 @@ const User = sequelize.define(
       allowNull: false,
     },
 
+    username: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
     email: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -29,6 +34,16 @@ const User = sequelize.define(
       allowNull: false,
     },
 
+    reset_password_token: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+    },
+
+    reset_password_expires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
     phone: {
       type: DataTypes.STRING(20),
       allowNull: true,
@@ -40,7 +55,7 @@ const User = sequelize.define(
     },
 
     role: {
-      type: DataTypes.ENUM("USER", "ADMIN"),
+      type: DataTypes.ENUM("USER", "CUSTOMER", "ADMIN"),
       allowNull: false,
       defaultValue: "USER",
     },

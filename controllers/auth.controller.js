@@ -1,8 +1,12 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../models/index.js";
+import { randomBytes, createHash } from "crypto";
+import nodemailer from "nodemailer";
 
 const { User } = db;
+
+console.log("FRONTEND_URL =", process.env.FRONTEND_URL);
 
 // ======================================================
 // REGISTER
@@ -295,6 +299,158 @@ export const updateMe = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Không thể cập nhật thông tin người dùng",
+    });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const email = String(req.body.email ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng nhập email",
+      });
+    }
+
+    const user = await User.findOne({ where: { email } });
+
+    // Không tiết lộ email có đăng ký tài khoản hay không
+    const successMessage =
+      "Nếu email đã đăng ký, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.";
+
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: successMessage,
+      });
+    }
+
+    // Tạo token ngẫu nhiên, chỉ lưu bản băm vào database
+    const token = randomBytes(32).toString("hex");
+
+    user.reset_password_token = createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    user.reset_password_expires = new Date(Date.now() + 15 * 60 * 1000);
+
+    await user.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+    });
+
+    try {
+      await transporter.sendMail({
+        from: `"LUMI Shop" <${process.env.GMAIL_USER}>`,
+        to: user.email,
+        subject: "Đặt lại mật khẩu - LUMI Shop",
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Đặt lại mật khẩu LUMI Shop</h2>
+            <p>Bạn đã yêu cầu đặt lại mật khẩu.</p>
+            <p>Nhấn nút bên dưới để tạo mật khẩu mới. Liên kết có hiệu lực trong 15 phút.</p>
+            <a href="${resetUrl}"
+               style="display:inline-block;padding:12px 20px;
+               background:#111;color:#fff;text-decoration:none;border-radius:6px;">
+              Đặt lại mật khẩu
+            </a>
+            <p>Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.</p>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      user.reset_password_token = null;
+      user.reset_password_expires = null;
+      await user.save();
+      throw emailError;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: successMessage,
+    });
+  } catch (error) {
+    console.error("FORGOT PASSWORD ERROR:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Không thể xử lý yêu cầu. Vui lòng thử lại sau.",
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password, confirmPassword } = req.body;
+
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng nhập đầy đủ thông tin",
+      });
+    }
+
+    if (typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu phải có ít nhất 6 ký tự",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu xác nhận không khớp",
+      });
+    }
+
+    const hashedToken = createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      where: { reset_password_token: hashedToken },
+    });
+
+    if (
+      !user ||
+      !user.reset_password_expires ||
+      new Date(user.reset_password_expires).getTime() < Date.now()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Liên kết không hợp lệ hoặc đã hết hạn",
+      });
+    }
+
+    // Băm mật khẩu mới giống như khi đăng ký
+    user.password = await bcrypt.hash(password, 10);
+
+    // Vô hiệu hóa token sau khi đổi mật khẩu
+    user.reset_password_token = null;
+    user.reset_password_expires = null;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Đổi mật khẩu thành công. Bạn có thể đăng nhập lại.",
+    });
+  } catch (error) {
+    console.error("RESET PASSWORD ERROR:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Không thể đổi mật khẩu",
     });
   }
 };

@@ -1,7 +1,17 @@
 import db from "../models/index.js";
+import generateOrderCode from "../utils/generateOrderCode.js";
+import { sendOrderConfirmation } from "../utils/sendOrderConfirmation.js";
 
-const { sequelize, Order, OrderItem, Cart, CartItem, ProductVariant, Product } =
-  db;
+const {
+  sequelize,
+  User,
+  Order,
+  OrderItem,
+  Cart,
+  CartItem,
+  ProductVariant,
+  Product,
+} = db;
 
 // =========================
 // CREATE ORDER
@@ -12,12 +22,7 @@ export const createOrder = async (req, res) => {
 
   try {
     const userId = req.user.id;
-
     const { shipping_address, shipping_phone, payment_method } = req.body;
-
-    // =========================
-    // 1. Validate dữ liệu
-    // =========================
 
     if (!shipping_address || !shipping_phone) {
       await transaction.rollback();
@@ -37,14 +42,9 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // =========================
-    // 2. Lấy Cart
-    // =========================
-
+    // Lấy giỏ hàng
     const cart = await Cart.findOne({
-      where: {
-        user_id: userId,
-      },
+      where: { user_id: userId },
       include: [
         {
           model: CartItem,
@@ -75,17 +75,14 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // =========================
-    // 3. Kiểm tra stock
-    // =========================
-
+    // Kiểm tra tồn kho
     for (const item of cart.items) {
-      if (!item.variant) {
+      if (!item.variant || !item.variant.product) {
         await transaction.rollback();
 
         return res.status(400).json({
           success: false,
-          message: "Không tìm thấy biến thể sản phẩm",
+          message: "Không tìm thấy biến thể hoặc sản phẩm",
         });
       }
 
@@ -99,24 +96,23 @@ export const createOrder = async (req, res) => {
       }
     }
 
-    // =========================
-    // 4. Tính tổng tiền
-    // =========================
+    const user = await User.findByPk(userId, {
+      attributes: ["id", "email", "name"],
+      transaction,
+    });
 
+    // Tính tổng tiền
     let totalAmount = 0;
 
     for (const item of cart.items) {
       const price = Number(item.variant.product.price);
-
       totalAmount += price * item.quantity;
     }
 
-    // =========================
-    // 5. Tạo Order
-    // =========================
-
+    // Tạo đơn hàng với mã ngẫu nhiên
     const order = await Order.create(
       {
+        order_code: generateOrderCode(),
         user_id: userId,
         total_amount: totalAmount,
         status: "PENDING",
@@ -125,19 +121,13 @@ export const createOrder = async (req, res) => {
         shipping_address,
         shipping_phone,
       },
-      {
-        transaction,
-      },
+      { transaction },
     );
 
-    // =========================
-    // 6. Tạo OrderItems
-    // =========================
-
+    // Tạo chi tiết đơn hàng và trừ tồn kho
     for (const item of cart.items) {
       const variant = item.variant;
       const product = variant.product;
-
       const price = Number(product.price);
       const subtotal = price * item.quantity;
 
@@ -152,44 +142,45 @@ export const createOrder = async (req, res) => {
           quantity: item.quantity,
           subtotal,
         },
-        {
-          transaction,
-        },
+        { transaction },
       );
 
-      // =========================
-      // 7. Trừ stock
-      // =========================
-
       variant.stock -= item.quantity;
-
-      await variant.save({
-        transaction,
-      });
+      await variant.save({ transaction });
     }
 
-    // =========================
-    // 8. Xóa CartItems
-    // =========================
-
+    // Xóa sản phẩm khỏi giỏ hàng
     await CartItem.destroy({
-      where: {
-        cart_id: cart.id,
-      },
+      where: { cart_id: cart.id },
       transaction,
     });
 
-    // =========================
-    // 9. Commit transaction
-    // =========================
-
     await transaction.commit();
+
+    // Gửi email sau khi đơn hàng đã được lưu thành công.
+    // Email lỗi không làm đơn hàng bị tạo thất bại.
+    try {
+      await sendOrderConfirmation(
+        user,
+        order,
+        cart.items.map((item) => ({
+          product_name: item.variant.product.name,
+          color: item.variant.color,
+          size: item.variant.size,
+          quantity: item.quantity,
+          subtotal: Number(item.variant.product.price) * item.quantity,
+        })),
+      );
+    } catch (emailError) {
+      console.error("Send order confirmation email error:", emailError);
+    }
 
     return res.status(201).json({
       success: true,
       message: "Đặt hàng thành công",
       data: {
         order_id: order.id,
+        order_code: order.order_code,
         total_amount: order.total_amount,
         status: order.status,
         payment_method: order.payment_method,
@@ -197,7 +188,9 @@ export const createOrder = async (req, res) => {
       },
     });
   } catch (error) {
-    await transaction.rollback();
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
 
     console.error("Create order error:", error);
 
@@ -218,9 +211,7 @@ export const getOrders = async (req, res) => {
     const userId = req.user.id;
 
     const orders = await Order.findAll({
-      where: {
-        user_id: userId,
-      },
+      where: { user_id: userId },
       include: [
         {
           model: OrderItem,
@@ -234,6 +225,13 @@ export const getOrders = async (req, res) => {
                   model: Product,
                   as: "product",
                   attributes: ["id", "name", "slug", "price"],
+                  include: [
+                    {
+                      model: db.ProductImage,
+                      as: "images",
+                      attributes: ["id", "image_url", "is_primary"],
+                    },
+                  ],
                 },
               ],
             },
@@ -267,6 +265,7 @@ export const getOrderById = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
+    // Giữ nguyên id làm khóa tìm kiếm nội bộ.
     const order = await Order.findOne({
       where: {
         id,
@@ -332,10 +331,6 @@ export const cancelOrder = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
-    // =========================
-    // 1. Tìm đơn hàng
-    // =========================
-
     const order = await Order.findOne({
       where: {
         id,
@@ -359,10 +354,6 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
-    // =========================
-    // 2. Kiểm tra trạng thái
-    // =========================
-
     if (order.status === "CANCELLED") {
       await transaction.rollback();
 
@@ -381,10 +372,7 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
-    // =========================
-    // 3. Hoàn lại stock
-    // =========================
-
+    // Hoàn lại số lượng hàng
     for (const item of order.items) {
       const variant = await ProductVariant.findByPk(item.variant_id, {
         transaction,
@@ -393,26 +381,12 @@ export const cancelOrder = async (req, res) => {
 
       if (variant) {
         variant.stock += item.quantity;
-
-        await variant.save({
-          transaction,
-        });
+        await variant.save({ transaction });
       }
     }
 
-    // =========================
-    // 4. Cập nhật trạng thái Order
-    // =========================
-
     order.status = "CANCELLED";
-
-    await order.save({
-      transaction,
-    });
-
-    // =========================
-    // 5. Commit
-    // =========================
+    await order.save({ transaction });
 
     await transaction.commit();
 
@@ -421,11 +395,14 @@ export const cancelOrder = async (req, res) => {
       message: "Hủy đơn hàng thành công",
       data: {
         order_id: order.id,
+        order_code: order.order_code,
         status: order.status,
       },
     });
   } catch (error) {
-    await transaction.rollback();
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
 
     console.error("Cancel order error:", error);
 
@@ -437,9 +414,9 @@ export const cancelOrder = async (req, res) => {
   }
 };
 
-/* =========================
-   UPDATE ORDER STATUS - ADMIN
-========================= */
+// =========================
+// UPDATE ORDER STATUS - ADMIN
+// =========================
 
 export const updateOrderStatus = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -464,7 +441,6 @@ export const updateOrderStatus = async (req, res) => {
       "CANCELLED",
     ];
 
-    // 1. Kiểm tra dữ liệu
     if (!allowedStatuses.includes(status)) {
       await transaction.rollback();
 
@@ -474,7 +450,6 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // 2. Tìm đơn hàng và các sản phẩm trong đơn
     const order = await Order.findByPk(id, {
       include: [
         {
@@ -495,7 +470,6 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // 3. Kiểm tra quy trình chuyển trạng thái
     if (!allowedTransitions[order.status]?.includes(status)) {
       await transaction.rollback();
 
@@ -505,7 +479,7 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // 4. Nếu hủy đơn, hoàn lại số lượng hàng vào kho
+    // Nếu hủy đơn, hoàn lại hàng vào kho
     if (status === "CANCELLED") {
       for (const item of order.items) {
         const variant = await ProductVariant.findByPk(item.variant_id, {
@@ -515,18 +489,14 @@ export const updateOrderStatus = async (req, res) => {
 
         if (variant) {
           variant.stock += item.quantity;
-
           await variant.save({ transaction });
         }
       }
     }
 
-    // 5. Cập nhật trạng thái
     order.status = status;
-
     await order.save({ transaction });
 
-    // 6. Lưu thay đổi
     await transaction.commit();
 
     return res.status(200).json({
@@ -534,6 +504,7 @@ export const updateOrderStatus = async (req, res) => {
       message: "Cập nhật trạng thái đơn hàng thành công",
       data: {
         order_id: order.id,
+        order_code: order.order_code,
         status: order.status,
       },
     });
@@ -547,6 +518,7 @@ export const updateOrderStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Không thể cập nhật trạng thái đơn hàng",
+      error: error.message,
     });
   }
 };

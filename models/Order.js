@@ -6,8 +6,14 @@ const Order = sequelize.define(
   {
     id: {
       type: DataTypes.INTEGER,
-      autoIncrement: true,
       primaryKey: true,
+      autoIncrement: true,
+    },
+
+    order_code: {
+      type: DataTypes.STRING(12),
+      allowNull: true,
+      unique: true,
     },
 
     user_id: {
@@ -36,7 +42,6 @@ const Order = sequelize.define(
     payment_method: {
       type: DataTypes.ENUM("COD", "ONLINE"),
       allowNull: false,
-      defaultValue: "COD",
     },
 
     payment_status: {

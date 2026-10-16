@@ -1,129 +1,114 @@
 import db from "../models/index.js";
 import { Op } from "sequelize";
 
-const { User, Product, Category, Order, OrderItem } = db;
+const { User, Product, Category, Order } = db;
 
-// ======================================
-// GET ADMIN DASHBOARD
-// ======================================
 export const getDashboard = async (req, res) => {
   try {
-    // ==============================
-    // 1. TỔNG SỐ
-    // ==============================
-
-    const totalUsers = await User.count();
-
-    const totalProducts = await Product.count();
-
-    const totalCategories = await Category.count();
-
-    const totalOrders = await Order.count();
-
-    // ==============================
-    // 2. ĐƠN HÀNG THEO TRẠNG THÁI
-    // ==============================
-
-    const pendingOrders = await Order.count({
-      where: {
-        status: "PENDING",
-      },
-    });
-
-    const confirmedOrders = await Order.count({
-      where: {
-        status: "CONFIRMED",
-      },
-    });
-
-    const shippingOrders = await Order.count({
-      where: {
-        status: "SHIPPING",
-      },
-    });
-
-    const deliveredOrders = await Order.count({
-      where: {
-        status: "DELIVERED",
-      },
-    });
-
-    const cancelledOrders = await Order.count({
-      where: {
-        status: "CANCELLED",
-      },
-    });
-
-    // ==============================
-    // 3. DOANH THU
-    // ==============================
-
-    const revenueResult = await Order.sum("total_amount", {
-      where: {
-        status: "DELIVERED",
-      },
-    });
-
-    const totalRevenue = Number(revenueResult || 0);
-
-    // ==============================
-    // 4. DOANH THU THÁNG HIỆN TẠI
-    // ==============================
-
     const now = new Date();
+    const year = now.getFullYear();
+    const startOfMonth = new Date(year, now.getMonth(), 1);
+    const endOfMonth = new Date(year, now.getMonth() + 1, 1);
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year + 1, 0, 1);
 
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-    const monthlyRevenueResult = await Order.sum("total_amount", {
-      where: {
-        status: "DELIVERED",
-        created_at: {
-          [Op.gte]: startOfMonth,
-          [Op.lt]: endOfMonth,
+    const [
+      totalUsers,
+      totalProducts,
+      totalCategories,
+      totalOrders,
+      pending,
+      confirmed,
+      shipping,
+      delivered,
+      cancelled,
+      totalRevenueResult,
+      monthlyRevenueResult,
+      monthlyOrders,
+      activeProducts,
+      inactiveProducts,
+      recentOrderRows,
+      yearlyDeliveredOrders,
+    ] = await Promise.all([
+      User.count(),
+      Product.count(),
+      Category.count(),
+      Order.count(),
+      Order.count({ where: { status: "PENDING" } }),
+      Order.count({ where: { status: "CONFIRMED" } }),
+      Order.count({ where: { status: "SHIPPING" } }),
+      Order.count({ where: { status: "DELIVERED" } }),
+      Order.count({ where: { status: "CANCELLED" } }),
+      Order.sum("total_amount", {
+        where: { status: "DELIVERED" },
+      }),
+      Order.sum("total_amount", {
+        where: {
+          status: "DELIVERED",
+          created_at: {
+            [Op.gte]: startOfMonth,
+            [Op.lt]: endOfMonth,
+          },
         },
-      },
-    });
+      }),
+      Order.count({
+        where: {
+          created_at: {
+            [Op.gte]: startOfMonth,
+            [Op.lt]: endOfMonth,
+          },
+        },
+      }),
+      Product.count({ where: { status: "ACTIVE" } }),
+      Product.count({ where: { status: "INACTIVE" } }),
+      Order.findAll({
+        order: [["created_at", "DESC"]],
+        limit: 5,
+      }),
+      Order.findAll({
+        where: {
+          status: "DELIVERED",
+          created_at: {
+            [Op.gte]: startOfYear,
+            [Op.lt]: endOfYear,
+          },
+        },
+        attributes: ["created_at", "total_amount"],
+      }),
+    ]);
 
+    const totalRevenue = Number(totalRevenueResult || 0);
     const monthlyRevenue = Number(monthlyRevenueResult || 0);
+    const byMonth = Array(12).fill(0);
 
-    // ==============================
-    // 5. ĐƠN HÀNG THÁNG HIỆN TẠI
-    // ==============================
+    yearlyDeliveredOrders.forEach((order) => {
+      const createdAt = order.created_at || order.createdAt;
+      if (!createdAt) return;
 
-    const monthlyOrders = await Order.count({
-      where: {
-        created_at: {
-          [Op.gte]: startOfMonth,
-          [Op.lt]: endOfMonth,
-        },
-      },
+      const month = new Date(createdAt).getMonth();
+      byMonth[month] += Number(order.total_amount ?? order.totalAmount ?? 0);
     });
 
-    // ==============================
-    // 6. SẢN PHẨM ACTIVE
-    // ==============================
+    const recentOrders = await Promise.all(
+      recentOrderRows.map(async (order) => {
+        const data = order.toJSON();
+        const userId = data.user_id ?? data.userId;
 
-    const activeProducts = await Product.count({
-      where: {
-        status: "ACTIVE",
-      },
-    });
+        const user = userId
+          ? await User.findByPk(userId, {
+              attributes: ["id", "name"],
+            })
+          : null;
 
-    const inactiveProducts = await Product.count({
-      where: {
-        status: "INACTIVE",
-      },
-    });
-
-    // ==============================
-    // 7. TRẢ VỀ DASHBOARD
-    // ==============================
+        return {
+          ...data,
+          user: user ? user.toJSON() : null,
+        };
+      }),
+    );
 
     return res.status(200).json({
       success: true,
-
       data: {
         overview: {
           totalUsers,
@@ -132,28 +117,26 @@ export const getDashboard = async (req, res) => {
           totalOrders,
           totalRevenue,
         },
-
         revenue: {
           total: totalRevenue,
           currentMonth: monthlyRevenue,
+          byMonth,
         },
-
         orders: {
           total: totalOrders,
           currentMonth: monthlyOrders,
-
-          pending: pendingOrders,
-          confirmed: confirmedOrders,
-          shipping: shippingOrders,
-          delivered: deliveredOrders,
-          cancelled: cancelledOrders,
+          pending,
+          confirmed,
+          shipping,
+          delivered,
+          cancelled,
         },
-
         products: {
           total: totalProducts,
           active: activeProducts,
           inactive: inactiveProducts,
         },
+        recentOrders,
       },
     });
   } catch (error) {

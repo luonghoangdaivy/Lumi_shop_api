@@ -1,6 +1,6 @@
 import db from "../models/index.js";
 
-const { Cart, CartItem, ProductVariant, Product } = db;
+const { Cart, CartItem, ProductVariant, Product, ProductImage } = db;
 
 // =========================
 // GET CART
@@ -27,6 +27,13 @@ export const getCart = async (req, res) => {
                 {
                   model: Product,
                   as: "product",
+                  include: [
+                    {
+                      model: ProductImage,
+                      as: "images",
+                      attributes: ["id", "image_url", "is_primary"],
+                    },
+                  ],
                 },
               ],
             },
@@ -55,6 +62,13 @@ export const getCart = async (req, res) => {
                   {
                     model: Product,
                     as: "product",
+                    include: [
+                      {
+                        model: ProductImage,
+                        as: "images",
+                        attributes: ["id", "image_url", "is_primary"],
+                      },
+                    ],
                   },
                 ],
               },

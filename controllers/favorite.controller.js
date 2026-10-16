@@ -1,6 +1,6 @@
 import db from "../models/index.js";
 
-const { Favorite, Product } = db;
+const { Favorite, Product, ProductImage, Category } = db;
 
 // =========================
 // ADD FAVORITE
@@ -73,6 +73,18 @@ export const getFavorites = async (req, res) => {
         {
           model: Product,
           as: "product",
+          include: [
+            {
+              model: ProductImage,
+              as: "images",
+              attributes: ["id", "image_url", "is_primary"],
+            },
+            {
+              model: Category,
+              as: "category",
+              attributes: ["id", "name", "slug"],
+            },
+          ],
         },
       ],
       order: [["created_at", "DESC"]],
