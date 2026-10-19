@@ -2,6 +2,7 @@ import fs from "fs/promises";
 
 import db from "../models/index.js";
 import sequelize from "../config/db.js";
+import { Op } from "sequelize";
 
 const { Product, Category, ProductVariant, ProductImage } = db;
 
@@ -94,18 +95,135 @@ const removeImageFiles = async (images = []) => {
 // GET /products
 export const getProducts = async (req, res) => {
   try {
+    const where = {};
+    const categoryWhere = {};
+
+    // 1. Lọc theo trạng thái (mặc định ACTIVE nếu được chỉ định hoặc xem danh sách bán hàng)
+    if (req.query.status && req.query.status !== "all") {
+      where.status = req.query.status;
+    }
+
+    // 2. Lọc theo danh mục (ID hoặc Slug)
+    if (req.query.category && req.query.category !== "all") {
+      const cat = String(req.query.category).trim();
+      if (/^\d+$/.test(cat)) {
+        where.category_id = Number(cat);
+      } else {
+        categoryWhere.slug = cat;
+      }
+    }
+
+    // 3. Tìm kiếm theo tên hoặc mô tả
+    if (req.query.search && req.query.search.trim()) {
+      const keyword = req.query.search.trim();
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${keyword}%` } },
+        { description: { [Op.iLike]: `%${keyword}%` } },
+      ];
+    }
+
+    // 4. Lọc theo khoảng giá
+    const minPrice =
+      req.query.minPrice !== undefined && req.query.minPrice !== ""
+        ? Number(req.query.minPrice)
+        : null;
+    const maxPrice =
+      req.query.maxPrice !== undefined && req.query.maxPrice !== ""
+        ? Number(req.query.maxPrice)
+        : null;
+
+    if (
+      minPrice !== null &&
+      !isNaN(minPrice) &&
+      maxPrice !== null &&
+      !isNaN(maxPrice)
+    ) {
+      where.price = { [Op.between]: [minPrice, maxPrice] };
+    } else if (minPrice !== null && !isNaN(minPrice)) {
+      where.price = { [Op.gte]: minPrice };
+    } else if (maxPrice !== null && !isNaN(maxPrice)) {
+      where.price = { [Op.lte]: maxPrice };
+    }
+
+    // 5. Sắp xếp
+    let order = [["id", "DESC"]];
+    const sort = req.query.sort;
+    if (sort === "price_asc") {
+      order = [["price", "ASC"]];
+    } else if (sort === "price_desc") {
+      order = [["price", "DESC"]];
+    } else if (sort === "oldest") {
+      order = [["id", "ASC"]];
+    } else if (sort === "newest") {
+      order = [["created_at", "DESC"]];
+    }
+
+    // 6. Phân trang
+    const hasPagination =
+      req.query.page !== undefined || req.query.limit !== undefined;
+
+    if (hasPagination) {
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.max(1, parseInt(req.query.limit, 10) || 12);
+      const offset = (page - 1) * limit;
+
+      const { count, rows } = await Product.findAndCountAll({
+        where,
+        include: [
+          {
+            model: Category,
+            as: "category",
+            ...(Object.keys(categoryWhere).length > 0
+              ? { where: categoryWhere }
+              : {}),
+          },
+          { model: ProductVariant, as: "variants" },
+          { model: ProductImage, as: "images" },
+        ],
+        distinct: true,
+        order,
+        limit,
+        offset,
+      });
+
+      const totalPages = Math.ceil(count / limit) || 1;
+
+      return res.status(200).json({
+        success: true,
+        data: rows,
+        pagination: {
+          total: count,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      });
+    }
+
+    // Nếu không yêu cầu phân trang -> trả toàn bộ (tương thích ngược)
     const products = await Product.findAll({
+      where,
       include: [
-        { model: Category, as: "category" },
+        {
+          model: Category,
+          as: "category",
+          ...(Object.keys(categoryWhere).length > 0
+            ? { where: categoryWhere }
+            : {}),
+        },
         { model: ProductVariant, as: "variants" },
         { model: ProductImage, as: "images" },
       ],
-      order: [["id", "ASC"]],
+      distinct: true,
+      order,
     });
 
     return res.status(200).json({
       success: true,
       data: products,
+      total: products.length,
     });
   } catch (error) {
     console.error("Get products error:", error);
