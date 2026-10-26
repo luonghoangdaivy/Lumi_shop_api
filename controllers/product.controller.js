@@ -98,6 +98,11 @@ export const getProducts = async (req, res) => {
     const where = {};
     const categoryWhere = {};
 
+    // Lọc sản phẩm nổi bật khi API nhận featured=true
+    if (req.query.featured === "true") {
+      where.is_featured = true;
+    }
+
     // 1. Lọc theo trạng thái (mặc định ACTIVE nếu được chỉ định hoặc xem danh sách bán hàng)
     if (req.query.status && req.query.status !== "all") {
       where.status = req.query.status;
@@ -273,7 +278,8 @@ export const createProduct = async (req, res) => {
   let transaction;
 
   try {
-    const { category_id, name, slug, description, price, status } = req.body;
+    const { category_id, name, slug, description, price, status, is_featured } =
+      req.body;
 
     if (
       !category_id ||
@@ -351,6 +357,7 @@ export const createProduct = async (req, res) => {
         description: description?.trim() || null,
         price: Number(price),
         status: status || "ACTIVE",
+        is_featured: is_featured === true || is_featured === "true",
       },
       { transaction },
     );
@@ -426,7 +433,8 @@ export const updateProduct = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { category_id, name, slug, description, price, status } = req.body;
+    const { category_id, name, slug, description, price, status, is_featured } =
+      req.body;
 
     const product = await Product.findByPk(id);
 
@@ -534,6 +542,10 @@ export const updateProduct = async (req, res) => {
             : product.description,
         price: price !== undefined ? Number(price) : product.price,
         status: status ?? product.status,
+        is_featured:
+          is_featured !== undefined
+            ? is_featured === true || is_featured === "true"
+            : product.is_featured,
       },
       { transaction },
     );
